@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.openstream.kinopulse.domain.model.MediaType
 import ru.openstream.kinopulse.ui.CatalogUiState
-import ru.openstream.kinopulse.ui.components.DemoModeBanner
 import ru.openstream.kinopulse.ui.components.PosterCard
 
 @Composable
@@ -118,7 +117,11 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    DemoModeBanner()
+                    Text(
+                        text = "Демо, полные открытые фильмы и ваши ссылки — разные источники.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(onClick = { showLinkDialog = true }) {
                         Text("Добавить видеоссылку")

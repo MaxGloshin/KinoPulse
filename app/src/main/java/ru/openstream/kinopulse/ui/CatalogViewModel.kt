@@ -63,7 +63,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     private val _uiState = MutableStateFlow(
         CatalogUiState(
-            isDemoMode = adapters.all { it.isDemoSource },
+            isDemoMode = adapters.any { it.isDemoSource },
             sourceName = adapters.joinToString(" + ") { it.displayName }
         )
     )

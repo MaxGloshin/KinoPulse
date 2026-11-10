@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.openstream.kinopulse.data.demo.LocalDemoCatalogAdapter
+import ru.openstream.kinopulse.data.open.OpenMoviesCatalogAdapter
+import ru.openstream.kinopulse.domain.source.DirectVideoLinks
 import ru.openstream.kinopulse.domain.model.playbackKey
 import ru.openstream.kinopulse.domain.model.MediaItem
 import ru.openstream.kinopulse.domain.model.MediaType
@@ -35,8 +37,12 @@ data class WatchProgressEntry(
     val positionMs: Long
 )
 
+data class UserVideoLink(val title: String, val url: String)
+
 data class CatalogUiState(
     val onlyFavorites: Boolean = false,
+    val userLinks: List<UserVideoLink> = emptyList(),
+    val linkError: String? = null,
     val isDemoMode: Boolean = true,
     val sourceName: String = "",
     val allItems: List<MediaItem> = emptyList(),
@@ -51,14 +57,14 @@ data class CatalogUiState(
 )
 
 class CatalogViewModel(application: Application) : AndroidViewModel(application) {
-    private val adapter: CatalogSourceAdapter = LocalDemoCatalogAdapter()
+    private val adapters: List<CatalogSourceAdapter> = listOf(LocalDemoCatalogAdapter(), OpenMoviesCatalogAdapter())
     private val store = application.catalogStore
     private val stateKey = stringPreferencesKey("state")
 
     private val _uiState = MutableStateFlow(
         CatalogUiState(
-            isDemoMode = adapter.isDemoSource,
-            sourceName = adapter.displayName
+            isDemoMode = adapters.all { it.isDemoSource },
+            sourceName = adapters.joinToString(" + ") { it.displayName }
         )
     )
     val uiState: StateFlow<CatalogUiState> = _uiState.asStateFlow()
@@ -69,13 +75,20 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     private fun loadCatalog() {
         viewModelScope.launch {
-            val items = adapter.getRecentFeed()
+            val items = adapters.flatMap { adapter -> adapter.getRecentFeed() }
             val stored = store.data.catch { error ->
                 if (error is IOException) emit(emptyPreferences()) else throw error
             }.first()[stateKey]
             val json = runCatching { JSONObject(stored ?: "{}") }.getOrDefault(JSONObject())
             val favoritesJson = json.optJSONArray("favorites") ?: JSONArray()
             val favorites = (0 until favoritesJson.length()).map { favoritesJson.optString(it) }.toSet()
+            val linksJson = json.optJSONArray("links") ?: JSONArray()
+            val links = (0 until linksJson.length()).mapNotNull { index ->
+                val obj = linksJson.optJSONObject(index) ?: return@mapNotNull null
+                val url = DirectVideoLinks.normalize(obj.optString("url")) ?: return@mapNotNull null
+                UserVideoLink(obj.optString("title").trim().take(120).ifEmpty { "Моя видеоссылка" }, url)
+            }.distinctBy { it.url }
+            val allItems = items + links.map(::makeLinkItem)
             val progressJson = json.optJSONObject("progress") ?: JSONObject()
             val progress = mutableMapOf<String, WatchProgressEntry>()
             for (key in progressJson.keys()) {
@@ -87,8 +100,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 state.copy(
                     favorites = favorites,
                     watchProgress = progress,
-                    allItems = items,
-                    filteredItems = filterItems(items, state.searchQuery, state.selectedFilter)
+                    userLinks = links,
+                    allItems = allItems,
+                    filteredItems = filterItems(allItems, state.searchQuery, state.selectedFilter)
                 )
             }
         }
@@ -135,9 +149,75 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             progress.put(key, JSONObject().put("media", entry.mediaId).put("variant", entry.variantId)
                 .put("title", entry.title).put("subtitle", entry.subtitle).put("position", entry.positionMs))
         }
-        val json = JSONObject().put("favorites", JSONArray(state.favorites.toList())).put("progress", progress).toString()
+        val links = JSONArray()
+        state.userLinks.forEach { link ->
+            links.put(JSONObject().put("title", link.title).put("url", link.url))
+        }
+        val json = JSONObject().put("favorites", JSONArray(state.favorites.toList()))
+            .put("progress", progress).put("links", links).toString()
         viewModelScope.launch { store.edit { it[stateKey] = json } }
     }
+
+    /** Adds only an explicitly supplied HTTPS video URL; no scraping or bypassing access controls. */
+    fun addDirectLink(title: String, url: String): Boolean {
+        val normalized = DirectVideoLinks.normalize(url)
+        if (normalized == null) {
+            _uiState.update { it.copy(linkError = "Нужна корректная прямая HTTPS-ссылка на видео.") }
+            return false
+        }
+        val link = UserVideoLink(title.trim().take(120).ifEmpty { "Моё видео" }, normalized)
+        _uiState.update { state ->
+            val links = state.userLinks.filterNot { it.url == normalized } + link
+            val merged = state.allItems.filterNot { it.id.startsWith("user_link_") } +
+                links.map(::makeLinkItem)
+            state.copy(
+                userLinks = links,
+                linkError = null,
+                allItems = merged,
+                filteredItems = filterItems(merged, state.searchQuery, state.selectedFilter)
+            )
+        }
+        persist()
+        return true
+    }
+
+    fun removeDirectLink(mediaId: String) {
+        _uiState.update { state ->
+            val remaining = state.userLinks.filterNot { DirectVideoLinks.stableId(it.url) == mediaId }
+            val items = state.allItems.filterNot { it.id == mediaId }
+            state.copy(
+                userLinks = remaining,
+                favorites = state.favorites - mediaId,
+                watchProgress = state.watchProgress.filterKeys { it != mediaId },
+                allItems = items,
+                filteredItems = filterItems(items, state.searchQuery, state.selectedFilter)
+            )
+        }
+        persist()
+    }
+
+    private fun makeLinkItem(link: UserVideoLink): MediaItem = MediaItem(
+        id = DirectVideoLinks.stableId(link.url),
+        title = link.title,
+        originalTitle = link.title,
+        year = 0,
+        type = MediaType.MOVIE,
+        rating = "—",
+        genres = listOf("Мои ссылки"),
+        description = "Добавлено вручную. KinoPulse не проверяет право доступа к содержимому и не обходит защиту.",
+        licenseInfo = "Пользовательский источник; права определяются владельцем видео.",
+        posterColorStart = 0xFF163B45,
+        posterColorEnd = 0xFF091A25,
+        posterAccentColor = 0xFF47D7C1,
+        directVariants = listOf(StreamVariant(
+            id = "direct",
+            sourceName = "Моя HTTPS-ссылка",
+            audioTrack = "Источник",
+            quality = "Авто",
+            streamUrl = link.url
+        )),
+        isDemoContent = false
+    )
 
     fun playbackKey(mediaId: String, variant: StreamVariant): String {
         return getMediaById(mediaId)?.playbackKey(variant) ?: mediaId

@@ -111,7 +111,7 @@ fun DetailsScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "${item.type.labelRu} • ${item.year} • ★ ${item.rating}",
+                        text = if (item.year > 0) "${item.type.labelRu} • ${item.year} • ★ ${item.rating}" else "${item.type.labelRu} • Моя ссылка",
                         color = Color(item.posterAccentColor),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,

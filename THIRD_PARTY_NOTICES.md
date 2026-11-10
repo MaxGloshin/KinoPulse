@@ -17,3 +17,11 @@ https://creativecommons.org/licenses/by/3.0/
 Видео загружается напрямую от внешнего хоста и не включено в APK.
 Названия и описания карточек переведены для демонстрации.
 «Хроники открытого кода» — условная подборка трейлеров для тестирования интерфейса.
+
+Дополнительные полные фильмы (ветка feature/open-movies-and-direct-links):
+Sintel — Blender Foundation, CC BY 3.0; Wikimedia Commons, VP9/720p.
+https://commons.wikimedia.org/wiki/File:Sintel_movie_4K.webm
+Big Buck Bunny — Blender Foundation, CC BY 3.0; Wikimedia Commons, VP9/720p.
+https://commons.wikimedia.org/wiki/File:Big_Buck_Bunny_4K.webm
+Авторство: © copyright Blender Foundation | www.sintel.org и
+© copyright Blender Foundation | www.bigbuckbunny.org соответственно.

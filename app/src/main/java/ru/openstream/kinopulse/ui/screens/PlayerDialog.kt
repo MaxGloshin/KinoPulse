@@ -118,7 +118,7 @@ fun VideoPlayerScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "ДЕМО-ПОТОК • ${variant.quality} • ${variant.audioTrack}",
+                        text = "Источник: ${variant.sourceName} • ${variant.quality} • ${variant.audioTrack}",
                         color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.labelSmall
                     )

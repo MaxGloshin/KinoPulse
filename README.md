@@ -1,2 +1,60 @@
-# KinoPulse
-KinoPulse — Android media app built with Kotlin, Jetpack Compose and Media3. Local demo catalog, favorites and playback history.
+# KinoPulse 0.2.0-demo
+
+Android-приложение на Kotlin, Compose и Media3. Минимальная версия Android 8.0.
+Каталог встроен в приложение. Для воспроизведения требуется интернет.
+
+## Сборка
+
+Требуются JDK 17 или 21, Android SDK Platform 35 и Build Tools 34.0.0.
+Укажите SDK в local.properties через sdk.dir или в ANDROID_HOME.
+
+Windows: `gradlew.bat assembleDebug lintDebug testDebugUnitTest`
+Linux/macOS: `./gradlew assembleDebug lintDebug testDebugUnitTest`
+
+APK: `app/build/outputs/apk/debug/app-debug.apk`.
+При первой сборке нужен доступ к Google Maven, Maven Central и Gradle.
+
+## Возможности
+
+- Встроенный демонстрационный каталог, поиск и фильтры.
+- Избранное и прогресс сохраняются локально через Preferences DataStore.
+- Отдельный прогресс для фильма и каждой серии, прямое продолжение просмотра.
+- Сохранение каждые 5 секунд, при закрытии плеера и уходе приложения в фон.
+- Пауза в фоне, сообщение об ошибке видео и повторная попытка.
+- Доступные тестовые трейлеры Sintel и Big Buck Bunny, фильм Tears of Steel.
+- Демо-сериал объединяет трейлеры для проверки независимого прогресса серий.
+
+## Структура
+
+`domain/source/CatalogSourceAdapter.kt` — контракт будущих источников.
+`data/demo/LocalDemoCatalogAdapter.kt` — встроенный каталог.
+`ui/CatalogViewModel.kt` — состояние и локальное сохранение.
+`ui/screens/PlayerDialog.kt` — Media3, жизненный цикл, ошибки и позиция.
+
+## Ограничения
+
+Внешние каталоги, реальные новинки и адаптеры киноисточников ещё не подключены.
+Постеры оформлены градиентами. Синхронизации между устройствами нет.
+Принудительное завершение процесса во время просмотра может потерять последние
+несколько секунд позиции. Ключ подписи debug предназначен для тестовых сборок.
+
+## Начать совместную работу
+
+- [Состояние и ограничения](PROJECT_STATUS.md)
+- [План развития](ROADMAP.md)
+- [Архитектура](docs/ARCHITECTURE.md)
+- [Контекст для нового участника](docs/HANDOFF.md)
+- [Правила работы с кодом](AGENTS.md)
+- [Результаты проверок](BUILD_REPORT.md)
+
+Работайте в отдельной ветке и передавайте изменения через pull request с результатами
+проверок. В этом этапе подготовлен репозиторий; приглашение участника и облачная
+разработка отложены владельцем. Готовые APK и ключи подписи в Git не включены.
+
+## Лицензии
+
+Собственный код — MIT, см. LICENSE.
+AndroidX/Compose/Media3/DataStore и Kotlin распространяются по своим лицензиям,
+преимущественно Apache-2.0. Gradle Wrapper — Apache-2.0.
+Видеоматериалы принадлежат их авторам. MIT на видеоматериалы не распространяется.
+Атрибуция демонстрационных потоков приведена в карточках и THIRD_PARTY_NOTICES.md.

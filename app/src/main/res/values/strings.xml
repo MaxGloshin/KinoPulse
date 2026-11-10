@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">KinoPulse</string>
+    <string name="demo_banner_title">ДЕМОНСТРАЦИОННЫЙ РЕЖИМ</string>
+    <string name="demo_banner_subtitle">Каталог доступен офлайн. Для просмотра видео нужен интернет.</string>
+</resources>

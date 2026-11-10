@@ -37,11 +37,11 @@ class OpenMoviesCatalogAdapter : CatalogSourceAdapter {
             posterAccentColor = 0xFFFF754C,
             directVariants = listOf(
                 StreamVariant(
-                    id = "open_sintel_mkv",
-                    sourceName = "Blender Foundation",
+                    id = "open_sintel_webm",
+                    sourceName = "Wikimedia Commons",
                     audioTrack = "Оригинал (ENG)",
-                    quality = "1080p • MKV",
-                    streamUrl = "https://download.blender.org/demo/movies/Sintel.2010.1080p.mkv"
+                    quality = "720p • WebM/VP9",
+                    streamUrl = "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f1/Sintel_movie_4K.webm/Sintel_movie_4K.webm.720p.vp9.webm"
                 )
             ),
             isDemoContent = false

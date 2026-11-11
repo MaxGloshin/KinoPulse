@@ -123,7 +123,19 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(onClick = { showLinkDialog = true }) {
+                    if (!state.isDataLoaded) {
+                        Text(
+                            text = state.storageError ?: "Загрузка сохранённых данных…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.storageError != null) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Button(
+                        onClick = { showLinkDialog = true },
+                        enabled = state.isDataLoaded
+                    ) {
                         Text("Добавить видеоссылку")
                     }
                     Spacer(modifier = Modifier.height(8.dp))

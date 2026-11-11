@@ -22,6 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +33,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.openstream.kinopulse.domain.model.MediaType
 import ru.openstream.kinopulse.ui.CatalogUiState
-import ru.openstream.kinopulse.ui.components.DemoModeBanner
 import ru.openstream.kinopulse.ui.components.PosterCard
 
 @Composable
@@ -48,8 +54,48 @@ fun HomeScreen(
     onFavoritesFilter: () -> Unit,
     onResume: (ru.openstream.kinopulse.ui.WatchProgressEntry) -> Unit,
     onMediaClick: (String) -> Unit,
+    onAddDirectLink: (String, String) -> Boolean,
     modifier: Modifier = Modifier
 ) {
+    var showLinkDialog by remember { mutableStateOf(false) }
+    var linkTitle by remember { mutableStateOf("") }
+    var linkUrl by remember { mutableStateOf("") }
+    if (showLinkDialog) {
+        AlertDialog(
+            onDismissRequest = { showLinkDialog = false },
+            title = { Text("Добавить прямую видеоссылку") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Только HTTPS-ссылка на доступный вам видеопоток (MP4, HLS, DASH, WebM и др.), не страница сайта.")
+                    OutlinedTextField(
+                        value = linkTitle,
+                        onValueChange = { linkTitle = it },
+                        label = { Text("Название") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = linkUrl,
+                        onValueChange = { linkUrl = it },
+                        label = { Text("HTTPS-ссылка на видео") }
+                    )
+                    state.linkError?.let { error ->
+                        Text(error, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (onAddDirectLink(linkTitle, linkUrl)) {
+                        showLinkDialog = false
+                        linkTitle = ""
+                        linkUrl = ""
+                    }
+                }) { Text("Добавить") }
+            },
+            dismissButton = { TextButton(onClick = { showLinkDialog = false }) { Text("Отмена") } }
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -71,13 +117,33 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    DemoModeBanner()
+                    Text(
+                        text = "Демо, полные открытые фильмы и ваши ссылки — разные источники.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
+                    if (!state.isDataLoaded) {
+                        Text(
+                            text = state.storageError ?: "Загрузка сохранённых данных…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.storageError != null) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    Button(
+                        onClick = { showLinkDialog = true },
+                        enabled = state.isDataLoaded
+                    ) {
+                        Text("Добавить видеоссылку")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
                         value = state.searchQuery,
                         onValueChange = onSearchQueryChange,
-                        placeholder = { Text("Поиск в локальном демо-каталоге...") },
+                        placeholder = { Text("Поиск по каталогу и моим ссылкам...") },
                         leadingIcon = {
                             Icon(Icons.Outlined.Search, contentDescription = null)
                         },
@@ -164,7 +230,7 @@ fun HomeScreen(
 
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    text = "Последние поступления (Демо-каталог)",
+                    text = "Каталог: демо, открытые фильмы и мои ссылки",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = MaterialTheme.colorScheme.onBackground

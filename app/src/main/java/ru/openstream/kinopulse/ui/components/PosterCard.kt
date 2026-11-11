@@ -81,7 +81,7 @@ fun PosterCard(
                         )
                     }
 
-                    Surface(
+                    if (item.rating != "—") Surface(
                         color = Color(item.posterAccentColor).copy(alpha = 0.22f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
@@ -100,7 +100,7 @@ fun PosterCard(
                     modifier = Modifier.align(Alignment.BottomStart)
                 ) {
                     Text(
-                        text = "DEMO • ${item.year}",
+                        text = "${if (item.isDemoContent) "ДЕМО" else if (item.id.startsWith("user_link_")) "МОЯ ССЫЛКА" else "OPEN MOVIE"}${if (item.year > 0) " • ${item.year}" else ""}",
                         color = Color(item.posterAccentColor),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold
@@ -136,7 +136,7 @@ fun PosterCard(
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = "${item.year} • ${item.genres.firstOrNull().orEmpty()}",
+            text = if (item.year > 0) "${item.year} • ${item.genres.firstOrNull().orEmpty()}" else item.genres.firstOrNull().orEmpty(),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             maxLines = 1,

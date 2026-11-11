@@ -55,6 +55,7 @@ fun DetailsScreen(
     savedPositionMs: Long?,
     onBack: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onRemoveLink: (() -> Unit)? = null,
     onPlayVariant: (title: String, variant: StreamVariant) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -110,7 +111,7 @@ fun DetailsScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "${item.type.labelRu} • ${item.year} • ★ ${item.rating}",
+                        text = if (item.year > 0) "${item.type.labelRu} • ${item.year} • ★ ${item.rating}" else "${item.type.labelRu} • Моя ссылка",
                         color = Color(item.posterAccentColor),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
@@ -156,7 +157,7 @@ fun DetailsScreen(
         }
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            DemoModeBanner()
+            if (item.isDemoContent) DemoModeBanner()
 
             if (savedPositionMs != null && savedPositionMs > 1_000L) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -254,7 +255,7 @@ fun DetailsScreen(
             }
 
             Text(
-                text = "Доступные варианты просмотра (Демо-источник)",
+                text = "Доступные варианты просмотра",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
@@ -284,7 +285,7 @@ fun DetailsScreen(
                                 fontSize = 15.sp
                             )
                             Text(
-                                text = "Источник: ${variant.sourceName} (Open Stream)",
+                                text = "Источник: ${variant.sourceName}",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -301,6 +302,9 @@ fun DetailsScreen(
                 }
             }
 
+            onRemoveLink?.let { remove ->
+                Button(onClick = remove) { Text("Удалить мою видеоссылку") }
+            }
             Spacer(modifier = Modifier.height(28.dp))
         }
     }

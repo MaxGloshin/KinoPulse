@@ -55,6 +55,9 @@ class MainActivity : ComponentActivity() {
                                 savedPositionMs = uiState.watchProgress[currentMedia.id]?.positionMs,
                                 onBack = { selectedMediaId = null },
                                 onToggleFavorite = { viewModel.toggleFavorite(currentMedia.id) },
+                                onRemoveLink = if (currentMedia.id.startsWith("user_link_")) {
+                                    { viewModel.removeDirectLink(currentMedia.id); selectedMediaId = null }
+                                } else null,
                                 onPlayVariant = { title, variant ->
                                     viewModel.startPlayback(currentMedia.id, title, variant)
                                 }
@@ -66,7 +69,8 @@ class MainActivity : ComponentActivity() {
                                 onFilterChange = viewModel::onFilterChange,
                                 onFavoritesFilter = viewModel::toggleFavoritesFilter,
                                 onResume = viewModel::resume,
-                                onMediaClick = { id -> selectedMediaId = id }
+                                onMediaClick = { id -> selectedMediaId = id },
+                                onAddDirectLink = viewModel::addDirectLink
                             )
                         }
                     }

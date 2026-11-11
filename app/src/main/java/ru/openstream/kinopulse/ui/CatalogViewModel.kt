@@ -9,8 +9,6 @@ import android.content.Context
 import org.json.JSONObject
 import org.json.JSONArray
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.catch
-import androidx.datastore.preferences.core.emptyPreferences
 import java.io.IOException
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +41,8 @@ data class CatalogUiState(
     val onlyFavorites: Boolean = false,
     val userLinks: List<UserVideoLink> = emptyList(),
     val linkError: String? = null,
+    val isDataLoaded: Boolean = false,
+    val storageError: String? = null,
     val isDemoMode: Boolean = true,
     val sourceName: String = "",
     val allItems: List<MediaItem> = emptyList(),
@@ -76,9 +76,19 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     private fun loadCatalog() {
         viewModelScope.launch {
             val items = adapters.flatMap { adapter -> adapter.getRecentFeed() }
-            val stored = store.data.catch { error ->
-                if (error is IOException) emit(emptyPreferences()) else throw error
-            }.first()[stateKey]
+            val stored = try {
+                store.data.first()[stateKey]
+            } catch (error: IOException) {
+                // Never reinterpret a failed read as an empty store: it could erase history.
+                _uiState.update { state ->
+                    state.copy(
+                        storageError = "Не удалось прочитать сохранённые данные. Запись отключена.",
+                        allItems = items,
+                        filteredItems = filterItems(items, state.searchQuery, state.selectedFilter)
+                    )
+                }
+                return@launch
+            }
             val json = runCatching { JSONObject(stored ?: "{}") }.getOrDefault(JSONObject())
             val favoritesJson = json.optJSONArray("favorites") ?: JSONArray()
             val favorites = (0 until favoritesJson.length()).map { favoritesJson.optString(it) }.toSet()
@@ -98,6 +108,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
             _uiState.update { state ->
                 state.copy(
+                    isDataLoaded = true,
+                    storageError = null,
                     favorites = favorites,
                     watchProgress = progress,
                     userLinks = links,
@@ -128,6 +140,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun toggleFavorite(mediaId: String) {
+        if (!_uiState.value.isDataLoaded) return
         _uiState.update { state ->
             val next = state.favorites.toMutableSet()
             if (!next.add(mediaId)) {
@@ -144,6 +157,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     private fun persist() {
         val state = _uiState.value
+        if (!state.isDataLoaded) return
         val progress = JSONObject()
         state.watchProgress.forEach { (key, entry) ->
             progress.put(key, JSONObject().put("media", entry.mediaId).put("variant", entry.variantId)
@@ -160,6 +174,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     /** Adds only an explicitly supplied HTTPS video URL; no scraping or bypassing access controls. */
     fun addDirectLink(title: String, url: String): Boolean {
+        if (!_uiState.value.isDataLoaded) {
+            _uiState.update { it.copy(linkError = "Сначала дождитесь загрузки сохранённых данных.") }
+            return false
+        }
         val normalized = DirectVideoLinks.normalize(url)
         if (normalized == null) {
             _uiState.update { it.copy(linkError = "Нужна корректная прямая HTTPS-ссылка на видео.") }
@@ -182,6 +200,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun removeDirectLink(mediaId: String) {
+        if (!_uiState.value.isDataLoaded) return
         _uiState.update { state ->
             val remaining = state.userLinks.filterNot { DirectVideoLinks.stableId(it.url) == mediaId }
             val items = state.allItems.filterNot { it.id == mediaId }

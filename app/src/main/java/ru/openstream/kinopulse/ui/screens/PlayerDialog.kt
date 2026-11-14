@@ -42,8 +42,8 @@ fun VideoPlayerScreen(
     title: String,
     variant: StreamVariant,
     initialPositionMs: Long,
-    onSavePosition: (Long) -> Unit,
-    onCloseWithPosition: (Long) -> Unit
+    onSavePosition: (Long, Boolean) -> Unit,
+    onCloseWithPosition: (Long, Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val exoPlayer = remember(variant.streamUrl) {
@@ -57,14 +57,15 @@ fun VideoPlayerScreen(
         }
     }
 
+    var playbackFinished by remember(exoPlayer) { mutableStateOf(false) }
     val savePosition by rememberUpdatedState(onSavePosition)
     val lifecycleOwner = LocalLifecycleOwner.current
     var error by remember { mutableStateOf<String?>(null) }
-    BackHandler { onCloseWithPosition(exoPlayer.currentPosition) }
+    BackHandler { onCloseWithPosition(exoPlayer.currentPosition, playbackFinished) }
     LaunchedEffect(exoPlayer) {
         while (true) {
             delay(5000)
-            savePosition(exoPlayer.currentPosition)
+            if (!playbackFinished) savePosition(exoPlayer.currentPosition, false)
         }
     }
     DisposableEffect(exoPlayer, lifecycleOwner) {
@@ -72,10 +73,16 @@ fun VideoPlayerScreen(
             override fun onPlayerError(exception: PlaybackException) {
                 error = "Не удалось открыть видео. Проверьте подключение и повторите попытку."
             }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED && !playbackFinished) {
+                    playbackFinished = true
+                    savePosition(exoPlayer.currentPosition, true)
+                }
+            }
         }
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
-                savePosition(exoPlayer.currentPosition)
+                if (!playbackFinished) savePosition(exoPlayer.currentPosition, false)
                 exoPlayer.pause()
             }
         }
@@ -103,7 +110,7 @@ fun VideoPlayerScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = { onCloseWithPosition(exoPlayer.currentPosition) }
+                    onClick = { onCloseWithPosition(exoPlayer.currentPosition, playbackFinished) }
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -130,6 +137,19 @@ fun VideoPlayerScreen(
             Text(message, color = Color.White, modifier = Modifier.padding(16.dp))
             Button(onClick = { error = null; exoPlayer.prepare(); exoPlayer.play() }) {
                 Text("Повторить")
+            }
+        }
+        if (playbackFinished) {
+            Button(
+                onClick = {
+                    playbackFinished = false
+                    error = null
+                    exoPlayer.seekTo(0)
+                    exoPlayer.play()
+                },
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text("Смотреть заново")
             }
         }
         AndroidView(

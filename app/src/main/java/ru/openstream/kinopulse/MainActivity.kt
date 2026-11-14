@@ -38,9 +38,9 @@ class MainActivity : ComponentActivity() {
                             title = uiState.activePlaybackTitle,
                             variant = activeVariant,
                             initialPositionMs = savedPos,
-                            onSavePosition = { viewModel.savePosition(it) },
-                            onCloseWithPosition = { pos ->
-                                viewModel.savePosition(pos, close = true)
+                            onSavePosition = { pos, finished -> viewModel.savePosition(pos, completed = finished) },
+                            onCloseWithPosition = { pos, finished ->
+                                viewModel.savePosition(pos, close = true, completed = finished)
                             }
                         )
                     } else {

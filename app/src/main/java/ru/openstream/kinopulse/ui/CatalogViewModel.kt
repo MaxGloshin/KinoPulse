@@ -27,14 +27,6 @@ import ru.openstream.kinopulse.domain.source.CatalogSourceAdapter
 
 private val Context.catalogStore by preferencesDataStore(name = "catalog")
 
-data class WatchProgressEntry(
-    val mediaId: String,
-    val variantId: String,
-    val title: String,
-    val subtitle: String,
-    val positionMs: Long
-)
-
 data class CatalogUiState(
     val onlyFavorites: Boolean = false,
     val isDemoMode: Boolean = true,
@@ -160,20 +152,20 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun savePosition(positionMs: Long, close: Boolean = false) {
+    fun savePosition(positionMs: Long, close: Boolean = false, completed: Boolean = false) {
         _uiState.update { state ->
             val mediaId = state.activePlaybackMediaId
-            val updatedProgress = state.watchProgress.toMutableMap()
             val variant = state.activePlaybackVariant
-            if (mediaId.isNotEmpty() && variant != null) {
-                updatedProgress[playbackKey(mediaId, variant)] = WatchProgressEntry(
+            val updatedProgress = if (mediaId.isNotEmpty() && variant != null) {
+                val entry = if (completed) null else WatchProgressEntry(
                     mediaId = mediaId,
                     variantId = variant.id,
                     title = state.activePlaybackTitle,
-                    subtitle = state.activePlaybackVariant?.let { "${it.quality} • ${it.audioTrack}" } ?: "",
+                    subtitle = "${variant.quality} • ${variant.audioTrack}",
                     positionMs = positionMs.coerceAtLeast(0)
                 )
-            }
+                updateWatchProgress(state.watchProgress, playbackKey(mediaId, variant), entry)
+            } else state.watchProgress
             state.copy(
                 watchProgress = updatedProgress,
                 activePlaybackVariant = if (close) null else state.activePlaybackVariant,
